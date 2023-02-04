@@ -5,7 +5,7 @@ import os.path
 #需要下载最后几个版本：
 ver_num = 3
 #需要批量下载的包，换行分隔
-download_libs = r'D:\doc\code\py\pythonMall\code\tools\temp\acondlib.txt'
+download_libs = r'D:\python\pythonProject\pythonMall\code\tools\temp\other.txt'
 #包存储路径
 download_path = r"D:\code\pythonlib\acondalibs"
 #包下载源，清华镜像源
@@ -33,8 +33,8 @@ else:
         os.mkdir('./temp')
         print('create directory ./temp')
     #保存抓取的html文件
-    with open(r'./temp/pylib_html', 'w') as fp:
-        fp.write(pylib_html)
+    # with open(r'./temp/pylib_html', 'w') as fp:
+    #     fp.write(pylib_html)
     #解析html文件，并保存此列表。
     pylib_list = re.findall('>([\w-]+)</a',pylib_html)
     pylibs = '\n'.join(pylib_list)
