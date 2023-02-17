@@ -1,0 +1,4 @@
+D:\code\pythonlib\acondalibs\python-dateutil\python-dateutil-2.8.2.tar.gz ,download success£º +
+D:\code\pythonlib\acondalibs\python-dateutil\python_dateutil-2.8.2-py2.py3-none-any.whl ,download success£º +
+D:\code\pythonlib\acondalibs\pytz\pytz-2022.7.1-py2.py3-none-any.whl ,download success£º +
+D:\code\pythonlib\acondalibs\pytz\pytz-2022.7.1.tar.gz ,download success£º +

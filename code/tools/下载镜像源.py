@@ -3,7 +3,7 @@ from lxml import etree
 import os.path
 
 #需要下载最后几个版本：
-ver_num = 3
+ver_num = 1
 #需要批量下载的包，换行分隔
 download_libs = r'D:\python\pythonProject\pythonMall\code\tools\temp\other.txt'
 #包存储路径
@@ -63,16 +63,17 @@ for pkg_name in pkg_has:
     a_tag = pkg_etree.xpath('//a')
     #匹配包名及下载链接{anaconda-client-1.1.1.tar.gz : https://....}
     pkg_dict = {i.xpath('./text()')[0] : i.xpath('./@href')[0].replace('../../','https://mirrors.tuna.tsinghua.edu.cn/pypi/web/') for i in a_tag}
-    #过滤macos的包
-    pkg_filtermac = filter(lambda x:x[0].find('macos') == -1 ,pkg_dict.items())
+    #过滤macos及win32的包
+    pkg_filtermac = dict(filter(lambda x:x[0].find('macos') == -1 and x[0].find('win32') == -1,pkg_dict.items()))
     # 用正则提取包名的版本号
-    pkg_ver_str = {v[0] if (v:=re.findall('-(\d[.0-9]*)-',i)) else '0' for i in dict(pkg_filtermac)}
+    pkg_ver_str = {v[0] if (v:=re.findall('-(\d[.0-9]*)-',i)) else '0' for i in pkg_filtermac}
     # 排序后取最后n个版本
-    pkg_ver =list(sorted(pkg_ver_str,reverse=True))[0:ver_num ]
+    pkg_ver =list(sorted(pkg_ver_str,key=lambda x:list(map(int,x.split('.'))),reverse=True))[0:ver_num ]
     # 取最后n个版本的package
-    pkg_filter = filter(lambda x:any([x[0].find(s) >= 0 for s in pkg_ver]),pkg_dict.items())
+    pkg_filter = filter(lambda x:any([x[0].find(s) >= 0 for s in pkg_ver]),pkg_filtermac.items())
+
     #下载包
-    download_log = open('./temp/download.log','a')
+    download_log = open('./temp/downloadlog.txt','a')
     for pkg_name, pkg_url in pkg_filter:
         pkg_path = os.path.join(pkg_dir ,pkg_name)
         print('bigen downlaod:----'+pkg_path)
