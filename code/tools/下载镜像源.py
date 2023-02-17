@@ -3,7 +3,11 @@ from lxml import etree
 import os.path
 
 #需要下载最后几个版本：
-ver_num = 1
+ver_num = 3
+#指定下载某版本,不指定则填写-1，默认-1
+ver = '1.17.3'
+#下载指定的python版本,不指定则填写-1，默认-1
+ver_c = 'cp38'
 #需要批量下载的包，换行分隔
 download_libs = r'D:\python\pythonProject\pythonMall\code\tools\temp\other.txt'
 #包存储路径
@@ -49,7 +53,7 @@ with open(download_libs) as af:
     # pkg_has1 = [v[0] for pkg in all_downlist if (v:=re.findall('^' + pkg + '$',pylibs , flags= re.M|re.I))]
     pkg_has = [pkg for pkg in all_downlist if pkg in pylib_list]
     print('准备下载的包共：' ,len(pkg_has),'个:', pkg_has)
-    print('无法下载的包：' ,set(all_downlist) - set(pkg_has))
+    print('无法下载的包：' ,set(all_downlist) - set(pkg_has) if set(all_downlist) - set(pkg_has) else '无')
     print(pkg_has)
 
 #开始下载
@@ -64,13 +68,22 @@ for pkg_name in pkg_has:
     #匹配包名及下载链接{anaconda-client-1.1.1.tar.gz : https://....}
     pkg_dict = {i.xpath('./text()')[0] : i.xpath('./@href')[0].replace('../../','https://mirrors.tuna.tsinghua.edu.cn/pypi/web/') for i in a_tag}
     #过滤macos及win32的包
-    pkg_filtermac = dict(filter(lambda x:x[0].find('macos') == -1 and x[0].find('win32') == -1,pkg_dict.items()))
+    pkg_filtermac = dict(filter(lambda x:x[0].find('macos') == -1 and x[0].find('win32') == -1 and x[0].find('i686') == -1,pkg_dict.items()))
+    #如果ver不为-1，则过滤此版本
+    if ver != '-1':
+          pkg_filtermac = dict(filter(lambda x:x[0].find(ver) >= 0 ,pkg_filtermac.items()))
+    #如果ver_c不为-1，则过滤此版本
+    if ver_c != '-1':
+          pkg_filtermac = dict(filter(lambda x:x[0].find(ver_c) >= 0 ,pkg_filtermac.items()))
     # 用正则提取包名的版本号
     pkg_ver_str = {v[0] if (v:=re.findall('-(\d[.0-9]*)-',i)) else '0' for i in pkg_filtermac}
     # 排序后取最后n个版本
     pkg_ver =list(sorted(pkg_ver_str,key=lambda x:list(map(int,x.split('.'))),reverse=True))[0:ver_num ]
     # 取最后n个版本的package
     pkg_filter = filter(lambda x:any([x[0].find(s) >= 0 for s in pkg_ver]),pkg_filtermac.items())
+    # print('准备下载的包：')
+    # for i in pkg_filter:
+    #     print(i)
 
     #下载包
     download_log = open('./temp/downloadlog.txt','a')
