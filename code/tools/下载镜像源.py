@@ -52,11 +52,9 @@ else:
 #加载需要下载的包
 with open(download_libs) as af:
     down_pkg ={(v:= re.split('\s+',i.strip().lower()))[0] : v[1] if len(v)>1 else '-1' for i in af.read().split('\n')}
-    print(down_pkg)
     # 正则表达式太慢了，用列表方式比较快
     # pkg_has1 = [v[0] for pkg in all_downlist if (v:=re.findall('^' + pkg + '$',pylibs , flags= re.M|re.I))]
     pkg_has = [pkg for pkg in down_pkg.keys() if pkg in pylib_list]
-    print(pkg_has)
     logger.info('准备下载的包共：%s 个： %s',len(pkg_has) ,pkg_has)
     pkg_none = set(down_pkg.keys()) - set(pkg_has)
     if pkg_none:
