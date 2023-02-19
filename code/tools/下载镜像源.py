@@ -1,61 +1,68 @@
-import requests,re,os,os.path
+import requests,re,os,os.path,logging
 from lxml import etree
-import os.path
 
 #需要下载最后几个版本：
-ver_num = 1
-#指定下载某版本,不指定则填写-1，默认-1
-ver = '-1'
-#下载指定的python版本,不指定则填写-1，默认-1
-ver_c = 'cp38'
+ver_num = 2
+#下载指定的python版本,不指定则填写-1，默认-1,值通常为cp38 ，cp39
+ver_python = 'cp38'
 #需要批量下载的包，换行分隔
 download_libs = r'D:\python\pythonProject\pythonMall\code\tools\temp\other.txt'
 #包存储路径
 download_path = r"D:\code\pythonlib\acondalibs"
 #包下载源，清华镜像源
 download_url = 'https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/'
-download_prfix_url = 'https://mirrors.tuna.tsinghua.edu.cn/pypi/web/'
 
+#设置日志记录
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+streamhandler = logging.StreamHandler()
+filehandler = logging.FileHandler('./temp/downlog.txt',encoding='GBK')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+streamhandler.setFormatter(formatter)
+filehandler.setFormatter(formatter)
+logger.addHandler(streamhandler)
+logger.addHandler(filehandler)
 
 #若没有下载过python的包列表，则爬取并保存，否则，直接读取已有文件,避免反复爬取网站数据。
 if os.path.exists('./temp/pylib_list.txt') and os.path.getsize('./temp/pylib_list.txt') != 0:
     pyf = open('./temp/pylib_list.txt','r')
     pylibs = pyf.read()
     pylib_list = pylibs.split('\n')
-    print('读取pylib_list成功！')
+    logger.info('./temp/读取pylib_list成功!')
     pyf.close()
 else:
     #如果下载路径不存在，则自动创建
     if not os.path.exists(download_path):
         os.makedirs(download_path)
-        print(r'create directory for download,the path is :D:\code\pythonlib\acondalibs')
+        logger.debug(r'create directory for download,the path is :D:\code\pythonlib\acondalibs')
     #将镜像源的包目录保存在当前路径的temp目录中
     resp = requests.request('get',download_url)
     pylib_html = resp.text
     #若没有temp目录，则创建此目录。
     if not os.path.exists('./temp'):
         os.mkdir('./temp')
-        print('create directory ./temp')
-    #保存抓取的html文件
-    # with open(r'./temp/pylib_html', 'w') as fp:
-    #     fp.write(pylib_html)
+        logger.debug('create directory ./temp')
     #解析html文件，并保存此列表。
     pylib_list = re.findall('>([\w-]+)</a',pylib_html)
     pylibs = '\n'.join(pylib_list)
     with open('./temp/pylib_list.txt','w') as fp:
         fp.write(pylibs)
-        print('save pylib_list success!')
+        logger.debug('save ./temp/pylib_list.txt success!')
 
-
+#加载需要下载的包
 with open(download_libs) as af:
-    all_downlist =[i.strip().lower() for i in af.read().split('\n')]
+    down_pkg ={(v:= re.split('\s+',i.strip().lower()))[0] : v[1] if len(v)>1 else '-1' for i in af.read().split('\n')}
+    print(down_pkg)
     # 正则表达式太慢了，用列表方式比较快
     # pkg_has1 = [v[0] for pkg in all_downlist if (v:=re.findall('^' + pkg + '$',pylibs , flags= re.M|re.I))]
-    pkg_has = [pkg for pkg in all_downlist if pkg in pylib_list]
-    print('准备下载的包共：' ,len(pkg_has),'个:', pkg_has)
-    print('镜像源没有的包：' ,set(all_downlist) - set(pkg_has) if set(all_downlist) - set(pkg_has) else '无')
+    pkg_has = [pkg for pkg in down_pkg.keys() if pkg in pylib_list]
+    print(pkg_has)
+    logger.info('准备下载的包共：%s 个： %s',len(pkg_has) ,pkg_has)
+    pkg_none = set(down_pkg.keys()) - set(pkg_has)
+    if pkg_none:
+        logger.warning('镜像源中没有的包：%s ' , pkg_none)
 
-#开始下载
+#抓取包的下载链接，下载包
 for pkg_name in pkg_has:
     #生成下载路径，若不存在，则创建
     pkg_dir = os.path.join(download_path, pkg_name)
@@ -68,34 +75,38 @@ for pkg_name in pkg_has:
     pkg_dict = {i.xpath('./text()')[0] : i.xpath('./@href')[0].replace('../../','https://mirrors.tuna.tsinghua.edu.cn/pypi/web/') for i in a_tag}
     #过滤macos及win32以及32位linux的包
     pkg_filter = dict(filter(lambda x: len(re.findall('macos|win32|i686' ,x[0])) == 0,pkg_dict.items()))
-    #如果ver不为-1，则过滤此版本'
+    #如果指定了版本号，则过滤出此版本'
+    ver = down_pkg.get(pkg_name)
     if ver != '-1':
-          pkg_filter = dict(filter(lambda x:x[0].find(ver) >= 0 ,pkg_filter.items()))
-    #如果ver_c不为-1，则过滤此版本
-    if ver_c != '-1':
-          pkg_filter = dict(filter(lambda x:x[0].find(ver_c) >= 0 ,pkg_filter.items()))
+        pkg_filter = dict(filter(lambda x:x[0].find(ver) >= 0 ,pkg_filter.items()))
+    #如果指定了python的版本，则过滤此版本，若在包列表中未找到指定的版本，则此过滤项无效
+    if ver_python != '-1':
+        pkg_filter_pyver = dict(filter(lambda x: x[0].find(ver_python) >= 0, pkg_filter.items()))
+        pkg_filter = pkg_filter_pyver if pkg_filter_pyver else pkg_filter
     # 用正则提取包名的版本号
     pkg_ver_str = {v[0] if (v:=re.findall('-(\d[.0-9]*)[.-]',i)) else '0' for i in pkg_filter}
     # 排序后取最后n个版本
     pkg_ver =list(sorted(pkg_ver_str,key=lambda x:list(map(int,x.split('.'))),reverse=True))[0:ver_num ]
+    logger.info('%s 计划下载的版本号为: %s ,准备下载的版本号为： %s',pkg_name,f'最新的{ver_num}个版本' if ver == '-1' else ver, pkg_ver)
     # 取最后n个版本的package
-    pkg_filter = list(filter(lambda x:any([x[0].find(s) >= 0 for s in pkg_ver]),pkg_filter.items()))
-    print('准备下载的包：')
-    for i in pkg_filter:
-        print(i)
-
-    #下载包
-    download_log = open('./temp/downloadlog.txt','a')
-    for pkg_name, pkg_url in pkg_filter:
-        pkg_path = os.path.join(pkg_dir ,pkg_name)
-        print('bigen downlaod:----'+pkg_path)
-        if os.path.exists(pkg_path):
-            continue
-        pkg_file = requests.get(pkg_url).content
-        fp = open(pkg_path ,'wb')
-        fp.write(pkg_file)
-        fp.close()
-        print('end downlaod:----'+pkg_path)
-        download_log.write( pkg_path + ' ,download success!\n')
-    download_log.close()
+    pkg_filter = dict(filter(lambda x:any([x[0].find(s) >= 0 for s in pkg_ver]),pkg_filter.items()))
+    if pkg_filter:
+        logger.debug('%s 准备下载的包,共：%s 个:' ,pkg_name ,len(pkg_filter))
+        # 开始下载
+        for pkg_name, pkg_url in pkg_filter.items():
+            pkg_path = os.path.join(pkg_dir, pkg_name)
+            if os.path.exists(pkg_path):
+                logger.info('已存在此文件: %s', pkg_path)
+                continue
+            pkg_file = requests.get(pkg_url).content
+            if not pkg_file:
+                logger.warning('下载失败！文件：%s', pkg_name)
+            else:
+                logger.info('开始下载: %s', pkg_path)
+                fp = open(pkg_path, 'wb')
+                fp.write(pkg_file)
+                fp.close()
+                logger.debug('下载成功，文件大小：%s MB , %s ', round(pkg_file.__sizeof__() / 1024 / 1024, 3), pkg_name)
+    else:
+        logger.warning('%s 下载失败，镜像源无下载链接！' ,pkg_name)
 

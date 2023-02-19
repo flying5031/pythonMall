@@ -1,12 +1,7 @@
-import logging
-x =5
-logging.debug('this is a debug!')
-logging.info('this is a info!')
-logging.error('this is a error!')
-logging.critical("This is a critical log.")
+import re
 
-print('xxxxxx')
-print('xxxxxx')
-print('xxxxxx')
-
-print(3+5*2)
+s = 'numpy  111'
+t = s.split('\s')
+z = re.split('\s+',s.strip())
+print(t)
+print(z)
