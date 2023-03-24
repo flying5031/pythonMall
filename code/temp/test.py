@@ -1,7 +1,12 @@
-import re
+from matplotlib import pyplot as plt
 
-s = 'numpy  111'
-t = s.split('\s')
-z = re.split('\s+',s.strip())
-print(t)
-print(z)
+# generate random data
+X = np.random.rand(10, 2)
+
+# generate the linkage matrix
+Z = linkage(X, 'ward')
+
+# plot dendrogram
+fig = plt.figure(figsize=(25, 10))
+dn = dendrogram(Z)
+plt.show()
