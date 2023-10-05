@@ -1,11 +1,8 @@
-import re
-import numpy
-import pandas as pd
-s = 'numpy  111'
-t = s.split('\s')
-z = re.split('\s+',s.strip())
-print(t)
-print(z)
+download_url = 'https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple'
 
-a = pd.Series(numpy.zeros(7+1) +1)
+download_url = download_url if download_url.endswith(r'/') else download_url + r'/'
+
+print(download_url)
+a = download_url.replace('simple/','')
 print(a)
+
