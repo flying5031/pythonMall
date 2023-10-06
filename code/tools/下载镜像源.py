@@ -1,18 +1,18 @@
-import requests,re,os,os.path,logging
+import requests,re,os,os.path,logging,json
 from lxml import etree
 
 #需要下载最新的几个版本,若requirement文件种指定了版本号，则此参数无效：
 ver_num = 2
 #下载指定的python版本,不指定则填写-1，默认-1,值通常为cp38 ，cp39
-ver_python = -1
+ver_python = 'cp38'
 #需要批量下载的包的路径，换行分隔。可指定版本号，若不指定版本则ver_num参数生效，例如：requests  2.28.0 或者 requests==2.28.0
-download_libs = r'D:\code\requirement.txt'
+download_libs = r'D:\doc\code\py\pythonMall\code\tools\temp\requirement.txt'
 #包存储路径
-download_path = r"D:\code\downloadlib"
+download_path = r"D:\code\downloadlib27"
 #包下载源，清华镜像源
-#download_url = 'https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/'
+download_url = 'https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/'
 #阿里镜像源
-download_url = 'http://mirrors.aliyun.com/pypi/simple/'
+#download_url = 'http://mirrors.aliyun.com/pypi/simple/'
 #豆瓣镜像源
 #download_url = 'http://pypi.douban.com/simple/'
 #中国科技大学
@@ -68,10 +68,19 @@ with open(download_libs) as af:
     # 正则表达式太慢了，用列表方式比较快
     # pkg_has1 = [v[0] for pkg in all_downlist if (v:=re.findall('^' + pkg + '$',pylibs , flags= re.M|re.I))]
     pkg_has = [pkg for pkg in down_pkg.keys() if pkg in pylib_list]
+
     logger.info('准备下载的包共：%s 个： %s',len(pkg_has) ,pkg_has)
     pkg_none = set(down_pkg.keys()) - set(pkg_has)
     if pkg_none:
-        logger.warning('镜像源中没有的包：%s ' , pkg_none)
+        logger.warning('镜像源中没有的包：%s ' ,pkg_none)
+        #将包名中的.替换为-再去查找。如backports.os将会替换为backports-os
+        pkg_has_replace = {p:p.replace('.','-') for p in pkg_none if  p.replace('.','-') in pylib_list}
+        pkg_has = pkg_has + list(pkg_has_replace.values())
+        down_pkg.update({j:down_pkg[i] for i,j in pkg_has_replace.items()})
+        pkg_none_replace = pkg_none - set(pkg_has_replace.keys())
+
+        if pkg_none_replace:
+            logger.warning('已将镜像中带“.”的包名替换为“-”，镜像源中仍没有的包：%s ', {k:down_pkg[k] for k in pkg_none_replace})
 
 #抓取包的下载链接，下载包
 for pkg_name in pkg_has:
